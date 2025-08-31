@@ -7,7 +7,7 @@ class TestMemory(unittest.TestCase):
     def test_memory_write_then_read(self):
         # GIVEN:
         # a value written to address 0x10
-        mem = Memory(bits=8, size=256, read_only=False)
+        mem = Memory(bits=8, size=256)
         mem.address = 0x10
         mem.data = 0x42
         mem.write_enable = True
@@ -30,7 +30,7 @@ class TestMemory(unittest.TestCase):
 
     def test_memory_write_out_of_range(self):
         # GIVEN: a memory of 8 bytes
-        mem = Memory(bits=8, size=8, read_only=False)
+        mem = Memory(bits=8, size=8)
         # WHEN: writing to address 8
         mem.address = 8
         mem.write_enable = True
@@ -45,3 +45,23 @@ class TestMemory(unittest.TestCase):
         mem.address = 0
         mem.execute()
         self.assertEqual(mem.data, 42)
+
+    def test_memory_with_contents(self):
+        # GIVEN: a memory with initial contents
+        initial_contents = [0x00, 0x01, 0x02, 0x03]
+        mem = Memory(bits=8, size=4, contents=initial_contents)
+        # WHEN: reading from the memory
+        mem.address = 0
+        mem.output_enable = True
+        mem.execute()
+        # THEN: the data is equal to the initial contents
+        self.assertEqual(mem.data, 0x00)
+        mem.address = 1
+        mem.execute()
+        self.assertEqual(mem.data, 0x01)
+        mem.address = 2
+        mem.execute()
+        self.assertEqual(mem.data, 0x02)
+        mem.address = 3
+        mem.execute()
+        self.assertEqual(mem.data, 0x03)

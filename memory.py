@@ -8,7 +8,7 @@
  
 
 class Memory:
-    def __init__(self, bits: int, size: int, read_only: bool):
+    def __init__(self, bits: int, size: int, contents: list[int] | None = None):
         self._data = [0] * size
         self._address = 0
         self._data_out: int | None = 0  # None means high-Z output
@@ -17,6 +17,9 @@ class Memory:
         self._output_enable = False
         self._max_data = (1 << bits) - 1
         self._max_address = size - 1
+        if contents:
+            for i in range(min(size, len(contents))):
+                self._data[i] = contents[i] & self._max_data
 
     @property
     def address(self) -> int:
