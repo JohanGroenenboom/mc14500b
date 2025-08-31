@@ -10,6 +10,11 @@ class Counter:
     @property
     def count(self) -> int:
         return self._count
+    
+    def clock_inputs(self):
+        ''' Increment the counter, modulo its maximum value
+        '''
+        self._count = (self._count + 1) & self._max_count
 
     def execute(self):
         ''' Increment the counter, modulo its maximum value

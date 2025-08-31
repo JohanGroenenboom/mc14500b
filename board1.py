@@ -1,6 +1,8 @@
 # from mc14500b import MC14500B
+from mc14500b import MC14500B
 from memory import Memory
 from counter import Counter
+from board import Board
 
 # mc = MC14500B()
 ROM = [
@@ -12,9 +14,15 @@ ROM = [
 memory = Memory(bits=4, size=16, contents=ROM)
 counter = Counter(bits=4)
 
+memory.connect_address_bus(lambda: counter.count)
+memory.output_enable = True
+
+board = Board()
+# order is important?
+board.add_device(counter)
+board.add_device(memory)
+
 for i in range(4):
-    memory.address = counter.count
-    memory.output_enable = True
-    memory.execute()
+    # memory.address = counter.count
     print(f"Counter: {counter.count}, Memory Data: {memory.data}")
-    counter.execute()
+    board.run()

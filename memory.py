@@ -5,6 +5,9 @@
 # To write to memory, set the address and data properties, then set the write enable and
 # clock the device by calling execute().
 # Address and data values are truncated to their proper sizes
+# The address can be provided either by setting it externally, or by
+# connecting the device to an address source by the connect_address_bus() method.
+
  
 
 class Memory:
@@ -17,6 +20,8 @@ class Memory:
         self._output_enable = False
         self._max_data = (1 << bits) - 1
         self._max_address = size - 1
+        self._address_bus = None
+        self._data_bus = None
         if contents:
             for i in range(min(size, len(contents))):
                 self._data[i] = contents[i] & self._max_data
@@ -66,10 +71,33 @@ class Memory:
     def write_enable(self, value: bool):
         self._write_enable = value
 
+    def clock_inputs(self):
+        ''' Clock the memory inputs (address and data)
+        '''
+        if self._write_enable and self._output_enable:
+            raise RuntimeError("Bus conflict: can't read and write at the same time")
+        if self._address_bus:
+            self._address = self._address_bus()
+        if self._write_enable:
+            if self._data_bus:
+                self._data_in = self._data_bus()
+                self._data[self._address] = self._data_in
+                return
+
+    def clock_outputs(self):
+        ''' Clock the memory outputs (data)
+        '''
+        if self._output_enable:
+            self._data_out = self._data[self._address]
+        else:
+            self._data_out = None
+
     def execute(self):
         ''' Execute a memory operation based on the output_enable and 
             write_enable signals (they cannot be active at the same time).
         '''
+        if self._address_bus:
+            self._address = self._address_bus()
         if self._write_enable and self._output_enable:
             raise RuntimeError("Bus conflict: can't read and write at the same time")
         if self._write_enable:
@@ -77,3 +105,15 @@ class Memory:
             return
         if self._output_enable:
             self._data_out = self._data[self._address]
+
+    def connect_address_bus(self, bus):
+        ''' Connect the memory's address bus to an external address bus. 
+            The bus should be callable and return the current address.
+        '''
+        self._address_bus = bus
+
+    def connect_data_bus(self, bus):
+        ''' Connect the memory's data bus to an external data bus. 
+            The bus should be callable and return the current data.
+        '''
+        self._data_bus = bus
