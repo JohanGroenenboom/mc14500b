@@ -20,6 +20,18 @@ class TestMC14599B(unittest.TestCase):
         mc.write = True
         mc.write = False
         assert mc.q == 3
+        mc.address = 7
+        mc.data = True
+        mc.write = True
+        mc.write = False
+        assert mc.q == 131
+        # When writing with enable disabled, no change
+        mc.enable = False
+        mc.address = 6
+        mc.data = True
+        mc.write = True
+        mc.write = False
+        assert mc.q == 131
 
     def test_read_without_enable(self):
         mc = MC14599B()
@@ -38,3 +50,12 @@ class TestMC14599B(unittest.TestCase):
         mc.data = True
         mc.write = True
         assert mc.data is None
+
+    def test_invalid_address(self):
+        mc = MC14599B()
+        mc.enable = True
+        mc.address = 8
+        mc.data = True
+        mc.write = True
+        mc.write = False
+        assert mc.q == 1
