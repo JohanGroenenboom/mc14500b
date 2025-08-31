@@ -4,16 +4,19 @@
 # Next, get the data property.
 # To write to memory, set the address and data properties, then set the write enable and
 # clock the device by calling execute().
+# Address and data values are truncated to their proper sizes
  
 
 class Memory:
     def __init__(self, bits: int, size: int, read_only: bool):
         self._data = [0] * size
         self._address = 0
-        self._data_out = 0
+        self._data_out: int | None = 0  # None means high-Z output
         self._data_in = 0
         self._write_enable = False
         self._output_enable = False
+        self._max_data = (1 << bits) - 1
+        self._max_address = size - 1
 
     @property
     def address(self) -> int:
@@ -22,9 +25,7 @@ class Memory:
     @address.setter
     def address(self, value: int):
         ''' set address on the device's address bus '''
-        if not (0 <= value < len(self._data)):
-            raise ValueError(f"Address {value} out of range")
-        self._address = value
+        self._address = value & self._max_address
 
     @property
     def data(self) -> int | None:
@@ -38,7 +39,9 @@ class Memory:
     @data.setter
     def data(self, value: int):
         ''' set data on the device's data bus '''
-        self._data_in = value
+        if self._output_enable:
+            raise RuntimeError("Bus conflict: can't read and write at the same time")
+        self._data_in = value & self._max_data
 
     @property
     def output_enable(self) -> bool:
@@ -47,6 +50,10 @@ class Memory:
     @output_enable.setter
     def output_enable(self, value: bool):
         self._output_enable = value
+        if value:
+            self._data_out = self._data[self._address]
+        else:
+            self._data_out = None
 
     @property
     def write_enable(self) -> bool:
