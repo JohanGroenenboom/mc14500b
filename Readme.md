@@ -9,4 +9,6 @@ There's also a method for applying a clock cycle, which causes new outputs to be
 
 ## Resources
 
-[A one-bit processor explained: reverse-engineering the vintage MC14500[]](https://www.righto.com/2021/02/a-one-bit-processor-explained-reverse.html)
+[A one-bit processor explained: reverse-engineering the vintage MC14500](https://www.righto.com/2021/02/a-one-bit-processor-explained-reverse.html)
+[MC14500B Industrial Control Unit Handbook](https://bitsavers.org/components/motorola/14500/MC14500B_Industrial_Control_Unit_Handbook_1977.pdf)
+[Nicola Cimmino's PLC-14500 project on github](https://github.com/nicolacimmino/PLC-14500)
