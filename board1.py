@@ -18,7 +18,6 @@ memory.connect_address_bus(lambda: counter.count)
 memory.output_enable = True
 
 board = Board()
-# order is important?
 board.add_device(counter)
 board.add_device(memory)
 

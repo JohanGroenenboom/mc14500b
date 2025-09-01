@@ -1,5 +1,5 @@
 # Board class manages the clocking of devices.
-# It assumes "duck typed" devices, having clock_inputs and/or clock_outputs methods.
+# It assumes "duck typed" devices, having clock_fall and/or clock_rise methods.
 # Devices can be added to the board and will be clocked in each cycle.
 
 
@@ -12,19 +12,20 @@ class Board:
             if hasattr(device, 'reset') and callable(device.reset):
                 device.reset()
 
-    def run(self):
-        self._clock_inputs()
-        self._clock_outputs()
+    def run(self, clocks: int = 1):
+        for _ in range(clocks):
+            self.clock_fall()
+            self.clock_rise()
 
     def add_device(self, device):
         self._devices.append(device)
 
-    def _clock_inputs(self):
+    def clock_fall(self):
         for device in self._devices:
-            if hasattr(device, 'clock_inputs') and callable(device.clock_inputs):
-                device.clock_inputs()
+            if hasattr(device, 'clock_fall') and callable(device.clock_fall):
+                device.clock_fall()
 
-    def _clock_outputs(self):
+    def clock_rise(self):
         for device in self._devices:
-            if hasattr(device, 'clock_outputs') and callable(device.clock_outputs):
-                device.clock_outputs()
+            if hasattr(device, 'clock_rise') and callable(device.clock_rise):
+                device.clock_rise()

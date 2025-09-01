@@ -14,7 +14,7 @@ class Memory:
     def __init__(self, bits: int, size: int, contents: list[int] | None = None):
         self._data = [0] * size
         self._address = 0
-        self._data_out: int | None = 0  # None means high-Z output
+        self._data_out: int = 0
         self._data_in = 0
         self._write_enable = False
         self._output_enable = False
@@ -37,7 +37,7 @@ class Memory:
 
     @property
     def data(self) -> int | None:
-        ''' Returning None is like having the databus in high-Z
+        ''' Returning None is like having the databus in high-Z.
             To get data out, the output enable must be set.
         '''
         if self._output_enable:
@@ -46,7 +46,9 @@ class Memory:
 
     @data.setter
     def data(self, value: int):
-        ''' set data on the device's data bus '''
+        ''' set data on the device's data bus.
+            The preferred way is to connect a data bus
+        '''
         if self._output_enable:
             raise RuntimeError("Bus conflict: can't read and write at the same time")
         self._data_in = value & self._max_data
@@ -60,8 +62,6 @@ class Memory:
         self._output_enable = value
         if value:
             self._data_out = self._data[self._address]
-        else:
-            self._data_out = None
 
     @property
     def write_enable(self) -> bool:
@@ -71,7 +71,7 @@ class Memory:
     def write_enable(self, value: bool):
         self._write_enable = value
 
-    def clock_inputs(self):
+    def clock_fall(self):
         ''' Clock the memory inputs (address and data)
         '''
         if self._write_enable and self._output_enable:
@@ -81,30 +81,22 @@ class Memory:
         if self._write_enable:
             if self._data_bus:
                 self._data_in = self._data_bus()
-                self._data[self._address] = self._data_in
-                return
+            self._data[self._address] = self._data_in
+            return
 
-    def clock_outputs(self):
+    def clock_rise(self):
         ''' Clock the memory outputs (data)
         '''
-        if self._output_enable:
-            self._data_out = self._data[self._address]
-        else:
-            self._data_out = None
+        self._data_out = self._data[self._address]
+
 
     def execute(self):
         ''' Execute a memory operation based on the output_enable and 
             write_enable signals (they cannot be active at the same time).
+            Combined operation of clock_fall() and clock_rise()
         '''
-        if self._address_bus:
-            self._address = self._address_bus()
-        if self._write_enable and self._output_enable:
-            raise RuntimeError("Bus conflict: can't read and write at the same time")
-        if self._write_enable:
-            self._data[self._address] = self._data_in
-            return
-        if self._output_enable:
-            self._data_out = self._data[self._address]
+        self.clock_fall()
+        self.clock_rise()
 
     def connect_address_bus(self, bus):
         ''' Connect the memory's address bus to an external address bus. 
