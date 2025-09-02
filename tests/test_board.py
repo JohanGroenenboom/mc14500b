@@ -31,20 +31,23 @@ class TestBoard(unittest.TestCase):
     def test_execute_14500_from_rom(self):
         # Test the execution of the 14500 instruction set from ROM
         # Create a board that has a program counter, ROM and MC14500
+        # and an MC14512B for an input selector.
         # The ROM has 4 bits of instruction and 1 bit of data
         # Fill the rom with instructions: (using 0 and 1 for False and True)
         # OR 1    (result: 1)
+        # STO 0   (store the result = 1 @ latch pos. 0)
         # AND 0   (result: 0)
+        # STO 1   (store the result = 0 @ latch pos. 1)
         # XNOR 1  (result: 1)
-        # At every cycle, the MC14500B data output is written to the latch
+        # STO 2   (store the result = 1 @ latch pos. 2)
 
-        def rom_entry(opcode, data, out_adr) -> int:
+        def rom_entry(opcode, data, io_adr) -> int:
             ''' each ROM entry is 8 bits: 
                 - 4 bits opcode, 
                 - 1 bit data, 
-                - 3 bits write output address 
+                - 3 bits i/o address 
             '''
-            return ((int(opcode) & 15) << 4) | ((data & 1) << 3) | (out_adr & 7)
+            return ((int(opcode) & 15) << 4) | ((data & 1) << 3) | (io_adr & 7)
         
         ROM = [
             rom_entry(OPCODE.OR,   1, 0),  # or with 1, store the result = 1 @ latch pos. 0
