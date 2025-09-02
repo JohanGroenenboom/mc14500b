@@ -18,6 +18,9 @@ class OPCODE(Enum):
     SKZ = 14    # Skip next instruction if Zero (activates skz_flag)
     NOPF = 15   # No Operation (activates f_flag)
 
+    def __int__(self):
+        return self.value
+
 
 class MC14500B: 
     def __init__(self):
@@ -32,9 +35,25 @@ class MC14500B:
         self.o_flag: bool = False
         self.f_flag: bool = False
         self.wr_flag: bool = False
+        self._get_instruction = None  # input connection for instruction bus
+        self._get_data = None  # input connection for data bus
 
+    def reset(self):
+        self.__init__()
 
-    def execute(self):
+    def clock_fall(self):
+        ''' On falling clock edge, the MC14500B captures the input data
+            and prepares to execute the next instruction.
+        '''
+        if self._get_instruction:
+            self.opcode = OPCODE(self._get_instruction())
+        if self._get_data:
+            self.data = bool(self._get_data())
+
+    def clock_rise(self):
+        ''' On rising clock edge, the MC14500B executes the instruction
+            that was captured on the falling edge.
+        '''
         self.jmp_flag = self._opcode == OPCODE.JMP
         self.rtn_flag = self._opcode == OPCODE.RTN
         self.o_flag = self._opcode == OPCODE.NOP0
@@ -66,7 +85,11 @@ class MC14500B:
                 self._output_enable = self._input_data
             case _:
                 return
-            
+
+    def execute(self):
+        self.clock_fall()
+        self.clock_rise()
+
     @property
     def data(self) -> bool | None:
         ''' Different from the hardware, where input and output data are 
@@ -82,13 +105,22 @@ class MC14500B:
 
     @data.setter
     def data(self, value: bool):
-        if self._input_enable:
-            self._input_data = value
+        ''' Set the input data for the MC14500B. 
+            _input_enable = False forces input data to False.
+            See the Handbook for details.
+        ''' 
+        self._input_data = self._input_enable and value
 
     @property
     def opcode(self) -> OPCODE:
-        return self._opcode
+        raise RuntimeError("Can't read opcode from MC14500B")
 
     @opcode.setter
     def opcode(self, value: OPCODE):
         self._opcode = value
+
+    def connect_instruction_input(self, get_instruction):
+        self._get_instruction = get_instruction
+
+    def connect_data_input(self, get_data):
+        self._get_data = get_data

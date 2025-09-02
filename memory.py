@@ -12,19 +12,19 @@
 
 class Memory:
     def __init__(self, bits: int, size: int, contents: list[int] | None = None):
-        self._data = [0] * size
+        self._mem_array = [0] * size
         self._address = 0
         self._data_out: int = 0
         self._data_in = 0
         self._write_enable = False
         self._output_enable = False
         self._max_data = (1 << bits) - 1
-        self._max_address = size - 1
+        self._max_address = size - 1  # FIXME
         self._address_bus = None
         self._data_bus = None
         if contents:
             for i in range(min(size, len(contents))):
-                self._data[i] = contents[i] & self._max_data
+                self._mem_array[i] = contents[i] & self._max_data
 
     @property
     def address(self) -> int:
@@ -61,7 +61,7 @@ class Memory:
     def output_enable(self, value: bool):
         self._output_enable = value
         if value:
-            self._data_out = self._data[self._address]
+            self._data_out = self._mem_array[self._address]
 
     @property
     def write_enable(self) -> bool:
@@ -77,17 +77,17 @@ class Memory:
         if self._write_enable and self._output_enable:
             raise RuntimeError("Bus conflict: can't read and write at the same time")
         if self._address_bus:
-            self._address = self._address_bus()
+            self._address = self._address_bus() & self._max_address
         if self._write_enable:
             if self._data_bus:
-                self._data_in = self._data_bus()
-            self._data[self._address] = self._data_in
+                self._data_in = self._data_bus() & self._max_data
+            self._mem_array[self._address] = self._data_in
             return
 
     def clock_rise(self):
         ''' Clock the memory outputs (data)
         '''
-        self._data_out = self._data[self._address]
+        self._data_out = self._mem_array[self._address]
 
 
     def execute(self):

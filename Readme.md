@@ -11,7 +11,7 @@ There's also a method for applying a clock cycle, which causes new outputs to be
 
 Devices are modeled as classes.  To be able to operate quasi-synchronously, they have a clock.
 Typical device behavior is to use the falling edge of the clock to "freeze" the inputs by copying them internally.
-On the rising edge of the clock, devices update their outputs. As a result, the state of the network (at the board or device interconnect level) is 
+On the rising edge of the clock, devices update their outputs. As a result, the state of the network (at the board or device interconnect level) is
 captured on the falling edge, and the new state happens on the rising edge.
 This is independent on the order in which devices are clocked, as long as they all get a falling clock edge before all getting a rising edge.
 Both the rising edge and falling edge behavior of a device are optional. Each edge is implemented by a method (clock_fall and clock_rise), and device classes are free to not implement either or both of them.
@@ -23,7 +23,7 @@ Similar to clocking, device classes can optionally have a reset method.
 ## Boards
 
 The clocking takes place at the Board level. The Board class allows the addition of devices.
-It uses "duck typing", checking each device for the presence of clock_fall, clock_rise and reset methods. 
+It uses "duck typing", checking each device for the presence of clock_fall, clock_rise and reset methods.
 Reset and clocking can be applied at the board level. The run method applies clock pulses to the board.
 
 ## Device connections
