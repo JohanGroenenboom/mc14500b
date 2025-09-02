@@ -1,5 +1,11 @@
 from enum import Enum
 
+# Class MC14500B mimics the behavior of the MC14500B device.
+# Inputs are connected by supplying lambda's that provide the signals.
+# Outputs are accessed via properties.
+
+TRACE_LEVEL = 0     # 0 to switch of tracing
+
 class OPCODE(Enum):
     NOP0 = 0    # No Operation (activates o_flag)
     LD = 1      # Load Data
@@ -25,16 +31,18 @@ class OPCODE(Enum):
 class MC14500B: 
     def __init__(self):
         self._rr: bool = False # result register rr
+        self._rr_out: bool = False # output of the result register
         self._opcode: OPCODE = OPCODE.NOP0
         self._input_enable: bool = True
         self._output_enable: bool = True
         self._input_data: bool = False
+        self._output_data: bool = False
         self.jmp_flag: bool = False
         self.rtn_flag: bool = False
         self.skz_flag: bool = False
         self.o_flag: bool = False
         self.f_flag: bool = False
-        self.wr_flag: bool = False
+        self.wr_flag: bool = False  # TODO make property
         self._get_instruction = None  # input connection for instruction bus
         self._get_data = None  # input connection for data bus
 
@@ -46,19 +54,15 @@ class MC14500B:
             and prepares to execute the next instruction.
         '''
         if self._get_instruction:
-            self.opcode = OPCODE(self._get_instruction())
+            self._opcode = OPCODE(self._get_instruction())
         if self._get_data:
-            self.data = bool(self._get_data())
+             self._input_data = self._input_enable and bool(self._get_data())
 
-    def clock_rise(self):
-        ''' On rising clock edge, the MC14500B executes the instruction
-            that was captured on the falling edge.
-        '''
         self.jmp_flag = self._opcode == OPCODE.JMP
         self.rtn_flag = self._opcode == OPCODE.RTN
         self.o_flag = self._opcode == OPCODE.NOP0
         self.f_flag = self._opcode == OPCODE.NOPF
-        self.wr_flag = self._opcode in {OPCODE.STO, OPCODE.STOC}
+        self.wr_flag = self._output_enable and self._opcode in {OPCODE.STO, OPCODE.STOC}
         if self.skz_flag and not self._rr:
             self.skz_flag = False
             return
@@ -84,9 +88,26 @@ class MC14500B:
             case OPCODE.OEN:
                 self._output_enable = self._input_data
             case _:
-                return
+                pass
+        if self._opcode == OPCODE.STOC:
+            self._output_data = not self._rr
+        else:
+            self._output_data = self._rr
+        if TRACE_LEVEL > 0:
+            print(f"MC14500B: {self._opcode.name}, Input: {self._input_data}, Output: {self._output_data}")
+
+
+    def clock_rise(self):
+        ''' On rising clock edge, the MC14500B executes the instruction
+            that was captured on the falling edge.
+            .... updates the RR output
+        '''
+        self._rr_out = self._rr
+        self.wr_flag = False
 
     def execute(self):
+        ''' Convenience function, mostly for testing
+        '''
         self.clock_fall()
         self.clock_rise()
 
@@ -100,24 +121,8 @@ class MC14500B:
             in hardware, the data method returns None.
         '''
         if self._output_enable:
-            return self._rr
+            return self._output_data
         return None
-
-    @data.setter
-    def data(self, value: bool):
-        ''' Set the input data for the MC14500B. 
-            _input_enable = False forces input data to False.
-            See the Handbook for details.
-        ''' 
-        self._input_data = self._input_enable and value
-
-    @property
-    def opcode(self) -> OPCODE:
-        raise RuntimeError("Can't read opcode from MC14500B")
-
-    @opcode.setter
-    def opcode(self, value: OPCODE):
-        self._opcode = value
 
     def connect_instruction_input(self, get_instruction):
         self._get_instruction = get_instruction

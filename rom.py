@@ -22,6 +22,8 @@ class Rom:
         self._get_address_input = None  # lambda for getting the address input
         self._get_data_input = None     # lambda for getting the data input
         if contents:
+            if len(contents) > self._size:
+                raise ValueError("Contents exceed ROM size")
             for i in range(min(self._size, len(contents))):
                 self._mem_array[i] = contents[i] & self._max_data
 

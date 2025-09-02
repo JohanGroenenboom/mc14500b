@@ -6,7 +6,6 @@ from mc14500b import MC14500B, OPCODE
 from mc14599b import MC14599B  # Output latch
 from mc14512b import MC14512B  # Data selector / multiplexer
 
-
 class TestBoard(unittest.TestCase):
 
     def test_counter_as_memory_address(self):
@@ -32,67 +31,80 @@ class TestBoard(unittest.TestCase):
         # Test the execution of the 14500 instruction set from ROM
         # Create a board that has a program counter, ROM and MC14500
         # and an MC14512B for an input selector.
-        # The ROM has 4 bits of instruction and 1 bit of data
-        # Fill the rom with instructions: (using 0 and 1 for False and True)
-        # OR 1    (result: 1)
-        # STO 0   (store the result = 1 @ latch pos. 0)
-        # AND 0   (result: 0)
-        # STO 1   (store the result = 0 @ latch pos. 1)
-        # XNOR 1  (result: 1)
-        # STO 2   (store the result = 1 @ latch pos. 2)
+        # The program will invert the input byte and store it in the output.
 
-        def rom_entry(opcode, data, io_adr) -> int:
+        def rom_entry(opcode, write_enable: bool, io_adr) -> int:
             ''' each ROM entry is 8 bits: 
-                - 4 bits opcode, 
-                - 1 bit UNUSED, 
+                - 4 bits opcode
+                - 1 bit write enable for output latch
                 - 3 bits i/o address 
             '''
-            return ((int(opcode) & 15) << 4) | ((data & 1) << 3) | (io_adr & 7)
+            return ((int(opcode) & 15) << 4) | ((int(write_enable) & 1) << 3) | (io_adr & 7)
         
         ROM = [
-            rom_entry(OPCODE.LD,   0, 7),  # Load from input 7
-            rom_entry(OPCODE.OR,   1, 0),  # or with 1, store the result = 1 @ latch pos. 0
-            rom_entry(OPCODE.AND,  0, 1),  # and with 0, store the result = 0 @ latch pos. 1
-            rom_entry(OPCODE.XNOR, 1, 2),  # xnor with 1, store the result = 1 @ latch pos. 2
+            rom_entry(OPCODE.LD,   False, 7),  # Load from input 7
+            rom_entry(OPCODE.STOC, True,  7),  # store the complement @ latch pos. 7
+            rom_entry(OPCODE.LD,   False, 6),  # Load from input 6
+            rom_entry(OPCODE.STOC, True,  6),  # store the complement @ latch pos. 6
+            rom_entry(OPCODE.LD,   False, 5),  # Load from input 5
+            rom_entry(OPCODE.STOC, True,  5),  # store the complement @ latch pos. 5
+            rom_entry(OPCODE.LD,   False, 4),  # Load from input 4
+            rom_entry(OPCODE.STOC, True,  4),  # store the complement @ latch pos. 4
+            rom_entry(OPCODE.LD,   False, 3),  # Load from input 3
+            rom_entry(OPCODE.STOC, True,  3),  # store the complement @ latch pos. 3
+            rom_entry(OPCODE.LD,   False, 2),  # Load from input 2
+            rom_entry(OPCODE.STOC, True,  2),  # store the complement @ latch pos. 2
+            rom_entry(OPCODE.LD,   False, 1),  # Load from input 1
+            rom_entry(OPCODE.STOC, True,  1),  # store the complement @ latch pos. 1
+            rom_entry(OPCODE.LD,   False, 0),  # Load from input 0
+            rom_entry(OPCODE.STOC, True,  0),  # store the complement @ latch pos. 0
         ]
 
         program_counter = Counter(bits=4)
-        rom = Rom(data_bits=8, address_bits=3, contents=ROM)
-        mc14500 = MC14500B()
-        latch = MC14599B()
+        rom = Rom(data_bits=8, address_bits=4, contents=ROM)
+        icu = MC14500B()
+        output_latch = MC14599B()
         input_selector = MC14512B()
+
+        input_data = 0b11110000  # Example input data
 
         # Connect the devices
         rom.connect_address_input(lambda: program_counter.count)
         # Connect the instruction bus of the MC14500B to bits 4..7 of the ROM data output
-        mc14500.connect_instruction_input(lambda: (rom.data >> 4 if rom.data is not None else 0) & 0x0F)
-        # Connect the data bus of the MC14500B to bit 3 of the ROM data output
-        # mc14500.connect_data_input(lambda: (rom.data >> 3 if rom.data is not None else 0) & 0x01)
+        icu.connect_instruction_input(lambda: (rom.data >> 4) & 0x0F)
         # Connect the data input of the MC14500B to the output of the input_selector
-        mc14500.connect_data_input(lambda: input_selector.data)
-        latch.connect_data_input(lambda: mc14500.data)
+        icu.connect_data_input(lambda: input_selector.data)
+        output_latch.connect_data_input(lambda: icu.data)
         # Connect the latch address to bits 0..2 of the ROM data output
-        latch.connect_address_input(lambda: (rom.data if rom.data is not None else 0) & 0x07)
-        latch.connect_chip_enable(lambda: True)  # pull-up, always enabled
-        latch.connect_write_input(lambda: True)  # always write
-        input_selector.connect_address_input(lambda: (rom.data if rom.data is not None else 0) & 0x07)
-        input_selector.connect_data_inputs(0xFF)  # All inputs are always high
+        output_latch.connect_address_input(lambda: rom.data & 0x07)
+        output_latch.connect_chip_enable(lambda: True)  # pull-up, always enabled
+        # Connect the write input of the output latch to the write_enable signal from the ROM
+        output_latch.connect_write_input(lambda: (rom.data >> 3) & 1)
+        # Connect the input selector address to bits 0..2 of the ROM data output
+        input_selector.connect_address_input(lambda: rom.data & 0x07)
+        # Connect the data inputs of the input selector to the input data variable
+        input_selector.connect_data_inputs(lambda: input_data)
 
         # Create the board that runs the simulation
         board = Board()
-        board.add_device(mc14500)
+        board.add_device(icu)
         board.add_device(rom)
         board.add_device(program_counter)
-        board.add_device(latch)
+        board.add_device(output_latch)
         board.add_device(input_selector)  # doesn't do anything, not a clocked device
 
         # Run the simulation
+        input_data = 0b11110000  # Example input data
         print()
-        print(f'Initial status: MC14500B Output = {mc14500.data}, Latch Output = {latch.q}', end=' ')
-        print(f'Counter Output = {program_counter.count}, ROM output = {rom.data}')
+        # print(f'Initial status: MC14500B = {icu.data}, Latch = {output_latch.q}', end=' ')
+        # print(f'Counter = {program_counter.count}, ROM = {rom.data}')
+        print(f'Input data = {bin(input_data)}')
+        board.run(16)
+        # for i in range(16):
+        #     board.run()
+        #     print(f"After {i+1} cycles: MC14500B = {icu.data}, Latch = {output_latch.q},",
+        #           f" Counter = {program_counter.count}, ROM = {hex(rom.data)}")
 
-        for i in range(4):
-            board.run()
-            print(f"After {i+1} cycles: MC14500B Output = {mc14500.data}, Latch Output = {latch.q},",
-                  f" Counter Output = {program_counter.count}, ROM output = {hex(rom.data if rom.data is not None else 0)}")
-
+        # Expect the latch to hold the inverted input data
+        self.assertEqual(output_latch.q, ~input_data & 0xFF)
+        print(f'Output data = {output_latch.q:#010b}')

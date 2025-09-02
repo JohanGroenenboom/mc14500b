@@ -58,35 +58,29 @@ class MC14599B:
     def chip_enable(self, value):
         self._chip_enable = value
 
-    @property
-    def write(self):
-        raise RuntimeError("Can't read the read/write input")
-
-    @write.setter
-    def write(self, value: bool):
-        ''' Set the read/write input to write (True) or read (False) '''
-        if self._chip_enable and self._write != value:
-            self._write = value
-            if self._write:
-                self._latches[self._address] = self._input_data
-
     def clock_fall(self):
         ''' Handle the falling edge of the clock signal by latching the inputs
         '''
         if self._get_chip_enable:
-            self.chip_enable = self._get_chip_enable()
+            self.chip_enable = bool(self._get_chip_enable())
         if self._get_address:
             self.address = self._get_address()
         if self._get_write:
-            self._write = self._get_write()
+            self._write = bool(self._get_write())
         if self._get_data:
-            self._input_data = self._get_data()
+            self._input_data = bool(self._get_data())
 
     def clock_rise(self):
         ''' On the rising edge of the clock signal, update the output
         '''
         if self._chip_enable and self._write:
             self._latches[self._address] = self._input_data
+
+    def execute(self):
+        ''' Convenience function, mostly for testing
+        '''
+        self.clock_fall()
+        self.clock_rise()
 
     def connect_chip_enable(self, chip_enable):
         ''' Connect the chip enable input to a callable that returns a boolean value '''

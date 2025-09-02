@@ -37,9 +37,9 @@ class MC14512B:
             raise ValueError("Input address must be between 0 and 7")
         self._get_input[input_adr] = data_input
 
-    def connect_data_inputs(self, data_inputs: int):
-        ''' Connect all data inputs to a 8-bit wide source
+    def connect_data_inputs(self, data_inputs):
+        ''' Connect all data inputs to a 8-bit wide source, a lambda that returns an int.
         '''
         for i in range(8):
-            self.connect_data_input(i, lambda i=i: bool((data_inputs >> i) & 1))
+            self.connect_data_input(i, lambda i=i: bool((data_inputs() >> i) & 1))
     
