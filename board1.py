@@ -1,21 +1,15 @@
 # from mc14500b import MC14500B
 from mc14500b import MC14500B
-from memory import Memory
+from rom import Rom
 from counter import Counter
 from board import Board
 
 # mc = MC14500B()
-ROM = [
-    0b0001,  # Instruction 1
-    0b0010,  # Instruction 2
-    0b0011,  # Instruction 3
-    0b0100,  # Instruction 4
-]
-memory = Memory(bits=4, size=16, contents=ROM)
+ROM = [15, 14, 13, 12]
+memory = Rom(data_bits=4, address_bits=4, contents=ROM)
 counter = Counter(bits=4)
 
-memory.connect_address_bus(lambda: counter.count)
-memory.output_enable = True
+memory.connect_address_input(lambda: counter.count)
 
 board = Board()
 board.add_device(counter)
